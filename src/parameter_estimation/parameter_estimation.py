@@ -1,6 +1,8 @@
 import numpy as np
-from scipy.optimize import minimize, Bounds
+from scipy.optimize import minimize, Bounds, basinhopping
 from src.parameter_estimation.velocity_functions import *
+from scipy import stats
+
 
 # Define sum of squared error function: will be used to fit the functions to the datapoint.
 def SSE(fun, thetas, xdata, observed):
@@ -16,14 +18,24 @@ def MSE(fun, thetas, xdata, observed):
     n = len(observed)
     return np.sum((fun(thetas, xdata) - observed) ** 2) /n
 
-def Likelihood(fun, thetas, xdata, observed):
-    y_mod= fun(thetas, xdata)
-    weight_diff = (y_mod - observed) * 1 # weight can be set to one since no high concentrations are present anyways
-    sumsquare = np.sum(weight_diff**2)
-    L = np.abs(np.exp(-sumsquare))
-    return L
+def MAE(fun, thetas, xdata, observed):
+    """
+    mean squared errors
+    """
+    n = len(observed)
+    return np.sum(np.abs(fun(thetas, xdata) - observed)) /n
 
-def get_parameters(model_func, TSS, vhs, thetas_init, minim_fun, method):
+def MLE_Norm(fun, thetas, xdata, observed):
+   y_mod=fun(thetas, xdata)
+   res = observed-y_mod
+   standard_dev = np.std(res)
+   # Calculate the log-likelihood for normal distribution
+   LL = np.sum(stats.norm.logpdf(observed, y_mod, standard_dev))
+   # Calculate the negative log-likelihood
+   neg_LL = -1*LL
+   return neg_LL
+
+def get_parameters(model_func, TSS, vhs, thetas_init, minim_fun, method='L-BFGS-B'):
     """
     Function that estimates parameters for a given model.
     
@@ -37,9 +49,11 @@ def get_parameters(model_func, TSS, vhs, thetas_init, minim_fun, method):
     Outputs:
     Optimized model parameters.
     """
+    # Define bounds 
+    bounds = [(0, None) for _ in thetas_init]  # This ensures all parameters are >= 0
 
     # Minimization to find optimal parameters (thetas)
-    result = minimize(lambda thetas: minim_fun(model_func, thetas, TSS, vhs), thetas_init, method=method)
+    result = minimize(lambda thetas: minim_fun(model_func, thetas, TSS, vhs), thetas_init, method=method, bounds=bounds)
 
     # Extracting the optimized parameters
     optimized_thetas = result.x
@@ -47,55 +61,34 @@ def get_parameters(model_func, TSS, vhs, thetas_init, minim_fun, method):
     return optimized_thetas
 
 
-# Parameter estimation vesilind
-def get_parameters_vesilind(TSS, vhs, thetasV_init, minim_fun):
+def get_parameters_basin_hopping(model_func, TSS, vhs, thetas_init, minim_fun, method, niter=100, stepsize=0.5):
     """
-    Function that estimates parameters of the Vesilind function
-    Inputs
+    Function that estimates parameters for a given model using Basin Hopping.
+    
+    Inputs:
+    model_func: Function representing the settling model (e.g., Vesilind or others).
     TSS: g/L
     vhs: m/h
-    thetasV_init: initial values for parameters v0 (m/h) and rv (l/g)
-    minim_fun=function that needs to be minimized, can be SSE, MSE
+    thetas_init: Initial values for the model parameters (v0, rv, etc.).
+    minim_fun: Function to minimize (e.g., SSE, MSE).
+    niter: Number of hopping iterations (default = 100).
+    stepsize: Step size for random perturbations (default = 0.5).
 
-    Outputs: 
-    v0: m/h - the maximum settling velocity
-    rv: l/g - model parameter
+    Outputs:
+    Optimized model parameters.
     """
 
-    # Minimazation of SSE to find optimal parameters (thetas)
-    result = minimize(lambda thetas: minim_fun(vesilind, thetas, TSS, vhs), thetasV_init, method='Nelder-Mead')
+    # Define the local minimizer (you can choose BFGS, Nelder-Mead, etc.)
+    minimizer_kwargs = {"method": method}
+
+    # Objective function for Basin Hopping (minim_fun returns the error value to minimize)
+    def objective_function(thetas):
+        return minim_fun(model_func, thetas, TSS, vhs)
+
+    # Basin Hopping algorithm for global optimization
+    result = basinhopping(objective_function, thetas_init, niter=niter, minimizer_kwargs=minimizer_kwargs, stepsize=stepsize)
 
     # Extracting the optimized parameters
-    thetasV = result.x
-
-    par_V=[thetasV[0], thetasV[1]]  #m/h, l/g
-    return par_V
-
-def get_parameters_takacs(TSS, vhs, thetasT_init):
-    """
-    Function that estimates parameters of the Takacs function
-    Inputs
-    TSS: g/L
-    vhs: m/h
-    thetasV_init: initial values for parameters v0 (m/h), rh (l/g) and rp (l/g)
-
-    Outputs: 
-    v0: m/h - the maximum settling velocity
-    rh: l/g - the settling characteristic of the hindered settling zone 
-    rp: l/g - the settling characteristic at low solids concentrations
-    """
-    # Set upper and lower bounds for each parameter -> this was needed because optimal parameters became negative without bounds
-    lower_bound = [0, 0, 0]  
-    upper_bound = [np.inf,np.inf,np.inf]  
-
-    # Create bounds for optimization
-    bounds = Bounds(lower_bound, upper_bound)
-
-    # Minimazation of SSE to find optimal parameters (thetas)
-    result = minimize(lambda thetas: SSE(takacs, thetas, TSS, vhs), thetasT_init, method='L-BFGS-B', bounds=bounds)
-
-    # Extracting the optimized parameters
-    thetasT = result.x
-
-    par_T=[thetasT[0], thetasT[1], thetasT[2]]  #m/h, l/g, l/g
-    return par_T
+    optimized_thetas = result.x
+    
+    return optimized_thetas

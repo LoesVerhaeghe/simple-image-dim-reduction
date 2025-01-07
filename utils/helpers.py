@@ -40,7 +40,45 @@ def loadImages(path):
     return loadedImages
 
 
-def extract_images_and_labels(base_folder, image_type='all'):
+def extract_images(path_to_folders, image_type='all', magnification=10):
+    """
+    Extract images from the specified folder.
+
+    Parameters:
+        base_folder (str): The base folder containing subfolders with images.
+        image_type (str): The type of images to extract: 'all', 'old', or 'new'. Default is 'all'.
+        magnification: type of magnification (10 or 40)
+
+    Returns:
+        all_images (list): A list of all extracted images.
+    """
+    target_folder='2024-01-26'
+    image_folders = listdir(path_to_folders) 
+
+    # Initialize lists for images and labels
+    all_images = []
+
+    # Define the condition for folder selection based on image_type
+    if image_type == 'all':
+        selected_folders = image_folders
+    elif image_type == 'old':
+        selected_folders = [folder for folder in image_folders if folder < target_folder]
+    elif image_type == 'new':
+        selected_folders = [folder for folder in image_folders if folder > target_folder]
+    else:
+        raise ValueError("Invalid image_type. Choose from 'all', 'old', or 'new'.")
+
+    # Save all images and labels from the selected folders
+    for folder in selected_folders:
+        path_to_image = f"{path_to_folders}/{folder}/basin5/{magnification}x"
+        images_list = listdir(path_to_image)
+        for image in images_list:
+            img = PImage.open(f"{path_to_image}/{image}")  # open in RGB color space
+            all_images.append(img)
+
+    return all_images
+
+def extract_images_and_labels(path_to_images, path_to_SVI, image_type='all'):
     """
     Extract images and labels from the specified folder.
 
@@ -53,8 +91,7 @@ def extract_images_and_labels(base_folder, image_type='all'):
         image_labels (numpy array): A numpy array of the corresponding labels.
     """
     target_folder='2024-01-26'
-    image_folders = listdir(base_folder) 
-    path0 = base_folder
+    image_folders = listdir(path_to_images)
 
     # Initialize lists for images and labels
     all_images = []
@@ -71,12 +108,11 @@ def extract_images_and_labels(base_folder, image_type='all'):
         raise ValueError("Invalid image_type. Choose from 'all', 'old', or 'new'.")
     
     # save all SVIs
-    file_name='data/Batch_settleability_tests_SVI.xlsx' # file with all SVI (because some SBHs where wrong but SVI is still useable)
-    all_sheetnames=pd.ExcelFile(file_name).sheet_names
+    all_sheetnames=pd.ExcelFile(path_to_SVI).sheet_names
 
     SVI=[]
     for sheet_name in all_sheetnames:
-        df=pd.read_excel(file_name, sheet_name=sheet_name, skiprows=[0,1,2,3,4,5,6])
+        df=pd.read_excel(path_to_SVI, sheet_name=sheet_name, skiprows=[0,1,2,3,4,5,6])
         SVI.append(df['(mL/g)'][0])
 
     SVI=pd.DataFrame(SVI, columns=['SVI'])
@@ -84,7 +120,7 @@ def extract_images_and_labels(base_folder, image_type='all'):
 
     # Save all images and labels from the selected folders
     for folder in selected_folders:
-        path = f"{path0}/{folder}/basin5/10x"
+        path = f"{path_to_images}/{folder}/basin5/10x"
         images_list = listdir(path)
         for image in images_list:
             img = PImage.open(f"{path}/{image}")  # open in RGB color space

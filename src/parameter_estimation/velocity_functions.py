@@ -17,6 +17,11 @@ def takacs(thetas, xdata):
     # thetas2=rp
     return thetas[0] * (np.exp(-thetas[1] * xdata) - np.exp(-thetas[2] * xdata))
 
+def takacs_rP_cte(thetas, xdata):
+    # thetas0=vo
+    # thetas1=rh
+    return thetas[0] * (np.exp(-thetas[1] * xdata) - np.exp(-2.86 * xdata)) # 2.86 is default value in WEST
+
 def vesilind(thetas, xdata):
     # theta0=v0
     # theta1=rv

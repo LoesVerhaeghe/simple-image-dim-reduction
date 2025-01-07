@@ -87,10 +87,10 @@ def plot_parameter_with_conf_intervals(dates, parameter_values, conf_intervals, 
 
     # Create the plot
     plt.figure(figsize=(10, 3), dpi=150)
-    plt.plot(dates, parameter_values, '-o', label=f'{parameter_name}')
+    plt.plot(dates, parameter_values, '-o', label=f'{parameter_name}', markersize=4)
     plt.fill_between(dates, lower_bounds, upper_bounds, color='lightblue', alpha=0.9)
     plt.xlabel('Time')
     plt.ylabel(parameter_name)
     plt.grid(True)
-    plt.savefig(file_path)
+    plt.savefig(file_path, bbox_inches='tight')
 
