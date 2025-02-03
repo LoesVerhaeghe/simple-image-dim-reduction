@@ -3,11 +3,14 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import pickle
 from utils.helpers import extract_images_and_labels
 from src.images_preprocessing.images_preprocessing import preprocess_images
 
+
+
 # extract images (either image_type='all','old', 'new' regarding to which microscope)
-base_folder = "data/microscope_images"
+base_folder = "data/microscope_images_train"
 all_images, image_labels = extract_images_and_labels("data/microscope_images", 'data/settling_tests/Batch_settleability_test_SVI.xlsx', image_type='all')
 
 # preprocess images
@@ -22,8 +25,12 @@ reducer = umap.UMAP(n_neighbors=n_neighbors, #default 15
                     min_dist=min_dist, #default 0.1
                     metric='l1', #default categorical
                     random_state=42,
-                    n_components=3)
+                    n_components=5)
 embedding = reducer.fit_transform(image_df)
+
+#save trained UMAP
+with open("results/dimension_reduction_results/umap_model_5dim_traindata.pkl", "wb") as f:
+    pickle.dump(reducer, f)
 
 fig = plt.subplots()
 sc=plt.scatter(embedding[:, 0], embedding[:, 1], c=image_labels)

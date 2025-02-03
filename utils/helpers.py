@@ -133,3 +133,26 @@ def extract_images_and_labels(path_to_images, path_to_SVI, image_type='all'):
     return all_images, image_labels
 
 
+def interpolate_time(df, new_index):
+
+    """Return a new DataFrame with all columns values interpolated to the new_index values."""
+    # Convert df.index to datetime and then to numerical values (timestamps)
+    df.index = pd.to_datetime(df.index)  # Convert index to datetime
+    df_index_timestamp = df.index.astype(int) / 10**9  # Convert to seconds since epoch
+    
+    # Convert new_index to datetime if it contains date strings
+    new_index_datetime = pd.to_datetime(new_index)
+    new_index_timestamp = new_index_datetime.astype(int) / 10**9  # Convert new_index to timestamps
+
+    # Create an empty DataFrame for output
+    df_out = pd.DataFrame(index=new_index_datetime)
+    df_out.index.name = df.index.name
+
+    # Interpolate each column
+    for colname, col in df.items():
+        df_out[colname] = np.interp(new_index_timestamp, df_index_timestamp, col)
+
+    # Convert the index of the interpolated DataFrame back to datetime
+    df_out.index = new_index_datetime
+
+    return df_out
