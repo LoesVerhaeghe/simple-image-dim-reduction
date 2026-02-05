@@ -88,6 +88,8 @@ def extract_images_and_labels(path_to_images, labels_dataframe, image_type='all'
       
     # Save all images and labels from the selected folders
     for folder in selected_folders:
+        if folder not in labels_dataframe.index:   # <- skip missing label folders
+            continue
         path = f"{path_to_images}/{folder}/basin5/10x"
         images_list = sorted(listdir(path))
         for image in images_list:
@@ -131,6 +133,43 @@ def extract_images_and_labels_zurich(path_to_folders, labels_dataframe, start_fo
                 img_path = f"{path_to_image}/{image}"
                 all_img_paths.append(img_path)
                 all_labels.append(labels_dataframe.loc[folder])
+
+    # Convert image labels to numpy array
+    all_labels = np.array(all_labels)
+
+    return all_img_paths, all_labels
+
+
+
+def extract_images_and_labels_pantarein(path_to_folders, labels_dataframe, start_folder, end_folder):
+    """
+    Extract paths from all the images from the specified folder.
+
+    Parameters:
+        base_folder (str): The base folder containing subfolders with images.
+        start_folder: start date from which images need to be extracted
+        end_folder: end date until which images need to be extracted
+
+    Returns:
+        all_images (list): A list of all extracted images.
+    """
+    image_folders = sorted(listdir(path_to_folders)) 
+
+    all_img_paths=[]
+    all_labels=[]
+
+    # Select the images from start until end date
+    selected_folders = [folder for folder in image_folders if start_folder <= folder <= end_folder]
+    selected_folders = sorted(selected_folders)
+
+    # Save all paths from the selected folders
+    for folder in selected_folders:
+        folder_path = f"{path_to_folders}/{folder}"
+        images_list = listdir(folder_path)
+        for image in images_list:
+            img_path = f"{folder_path}/{image}"
+            all_img_paths.append(img_path)
+            all_labels.append(labels_dataframe.loc[folder])
 
     # Convert image labels to numpy array
     all_labels = np.array(all_labels)
